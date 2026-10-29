@@ -18,12 +18,12 @@ Die Tests prüfen die Regeln direkt mit isolierten Weltzuständen. Sie verbinden
 
 ## In Frontend und API verwenden
 
-Beide Anwendungen installieren dieses Repository als Git-Abhängigkeit. Ihre `package.json` verweist auf dieselbe vollständige Commit-SHA, beispielsweise nach diesem Schema:
+Beide Anwendungen installieren ein öffentliches HTTPS-Archiv dieses Repositories. Ihre `package.json` verweist auf dieselbe vollständige Commit-SHA mit 40 Zeichen:
 
 ```json
 {
   "dependencies": {
-    "@stackfriends/shared": "github:Tom-Gries/MuStackShared#<vollständige-Commit-SHA>"
+    "@stackfriends/shared": "https://codeload.github.com/Tom-Gries/MuStackShared/tar.gz/<commit-sha>"
   }
 }
 ```
@@ -37,17 +37,22 @@ import { createWorld, applyCommand } from '@stackfriends/shared/game.js';
 import { getCatalog } from '@stackfriends/shared/catalog.js';
 ```
 
-Das Paket wird ausschließlich über Git bezogen. `private: true` schützt vor versehentlichem Veröffentlichen in einer npm-Registry. Die Paketdateien umfassen die JavaScript-Module; die Tests bleiben im Quellrepository.
+Das Archiv wird per HTTPS ohne SSH-Schlüssel oder Zugangstoken geladen. `package-lock.json` hält zusätzlich die Integritätsprüfung des Archivs fest. `private: true` schützt vor versehentlichem Veröffentlichen in einer npm-Registry.
 
 ## Gemeinsame Regeln ändern
 
 1. Regeln und passende Tests in diesem Repository ändern und lokal prüfen.
 2. Den geprüften Stand committen und nach GitHub pushen.
-3. Die vollständige Commit-SHA in den Abhängigkeiten von Frontend und API gemeinsam aktualisieren und die jeweiligen Lockdateien mit npm erneuern.
+3. In Frontend und API denselben Commit installieren und damit die jeweiligen Lockdateien erneuern:
+
+   ```sh
+   npm install '@stackfriends/shared@https://codeload.github.com/Tom-Gries/MuStackShared/tar.gz/<commit-sha>'
+   ```
+
 4. Beide Anwendungen testen und ihre Änderungen separat committen und pushen.
 
 Karten und Rezepte, die während des Spiels im Editor geändert werden, gehören weiterhin zum gespeicherten Weltkatalog. Dieses Paket enthält die gemeinsamen Standarddefinitionen und die Regelausführung.
 
 ## Vercel
 
-Für dieses Repository wird kein eigenes Vercel-Projekt angelegt. Frontend und API installieren ihre festgelegte Git-Abhängigkeit während `npm ci` und verwenden die Module in ihren jeweiligen Builds beziehungsweise Serverfunktionen. Ein daneben ausgecheckter `shared`-Ordner und Dateien außerhalb ihres Vercel-Repository-Hauptordners sind dafür nicht erforderlich.
+Für dieses Repository wird kein eigenes Vercel-Projekt angelegt. Frontend und API installieren ihr festgelegtes HTTPS-Archiv während `npm ci` und verwenden die Module in ihren jeweiligen Builds beziehungsweise Serverfunktionen. Ein daneben ausgecheckter `shared`-Ordner und Dateien außerhalb ihres Vercel-Repository-Hauptordners sind dafür nicht erforderlich.
