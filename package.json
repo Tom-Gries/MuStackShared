@@ -1,0 +1,20 @@
+{
+  "name": "@stackfriends/shared",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "description": "Gemeinsame Spielregeln und Katalogdefinitionen von StackFriends",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/Tom-Gries/MuStackShared.git"
+  },
+  "engines": {
+    "node": ">=22"
+  },
+  "exports": { "./*": "./*" },
+  "files": ["*.js"],
+  "scripts": {
+    "test": "node --test tests/*.test.js",
+    "check": "node --check game.js"
+  }
+}
