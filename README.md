@@ -51,7 +51,19 @@ Das Archiv wird per HTTPS ohne SSH-Schlüssel oder Zugangstoken geladen. `packag
 
 4. Beide Anwendungen testen und ihre Änderungen separat committen und pushen.
 
-Karten und Rezepte, die während des Spiels im Editor geändert werden, gehören weiterhin zum gespeicherten Weltkatalog. Dieses Paket enthält die gemeinsamen Standarddefinitionen und die Regelausführung.
+Karten, Pakete und Rezepte aus dem Editor gehören zum zentralen Katalog. Die API übernimmt diesen Katalog in die persönlichen Welten; deren Fortschritt bleibt pro Spieler getrennt.
+
+## Persönliche Welten und Geschenke
+
+`personal-world.js` ergänzt die Spielregeln um reine Funktionen ohne Datenbankzugriffe:
+
+- `createPersonalWorld(player, catalog, now)` erstellt genau einen Menschen für `player.id` sowie das Startgold für drei Basicpakete. Die Welt-ID ist die Spieler-ID.
+- `summarizeMaterials(world)` zählt die Karten für die Spielerübersicht. Menschen und Leichen werden ausgelassen; Gold im Sparschwein zählt zum Goldbestand.
+- `takeGiftCards(world, selection, now)` entfernt eine Drag-Auswahl atomar und liefert übertragbare Karten. Standardmäßig werden die gewählte Karte und alle darüberliegenden Karten genommen. Menschen, Leichen, angreifende Lebewesen, ausgerüstete Werkzeuge und Teilnehmer laufender Arbeiten oder Kämpfe sind gesperrt.
+- `receiveGiftCards(world, cards, now)` liefert Geschenke atomar mit neuen Karten- und Stapel-IDs in eine persönliche Welt. Karteninhalt, verbleibende Quellen-Nutzungen, Paketinhalt, Leben und Erntefrist bleiben erhalten. Bewegungsbahnen und Verweise in die Absenderwelt werden verworfen.
+- `ensurePersonalCatalog(catalog)` ergänzt in älteren zentralen Katalogen die Rathauskarte und das Rezept aus 100 Stein, ohne angepasste Definitionen zu ersetzen. Ein Mensch baut das Rathaus nach 60 Sekunden Spielzeit fertig.
+
+Die API verwaltet Identität, Berechtigungen, Transaktionen, Revisionen und den Geschenk-Posteingang. Die Funktionen eröffnen selbst keine Verbindung und starten keinen Timer.
 
 ## Vercel
 

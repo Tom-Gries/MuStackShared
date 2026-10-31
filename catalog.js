@@ -43,6 +43,7 @@ const BUILTIN_CARDS = {
   field: type('Erdbeerfeld', 'building', '#9eb38b', '🍓', 3, 'Alle 24 Stunden zehn Beeren, auch offline. Es wird höchstens eine Ernte gespeichert.'),
   piggyBank: type('Sparschwein', 'building', '#e3b3ac', '🐷', 3, 'Gold hineinziehen. Ein Klick nimmt ein Gold heraus. Zum Paketkauf ein ausreichend gefülltes Sparschwein auf das gewünschte Paket im Laden ziehen. Zum Verkaufen zuerst leeren.'),
   warehouse: type('Lager', 'building', '#c5b090', '🏠', 5, 'Bereit für ein späteres Kartenlimit. In dieser Version hat das Lager noch keine Zusatzwirkung.'),
+  town_hall: { ...type('Rathaus', 'building', '#c3b69b', '🏛️', 0, 'Öffnet die Spielerliste mit Materialien, Geschenken und Online-Benachrichtigungen. Ein Mensch baut es aus 100 Stein in einer Minute.'), art: 'warehouse' },
   axe: type('Axt', 'tool', '#aec3ba', '🪓', 3, 'Auf einen Menschen ziehen: halbiert die Abbauzeit am Baum. Ein Werkzeugplatz pro Mensch.'),
   pickaxe: type('Spitzhacke', 'tool', '#b4bfc4', '⛏️', 3, 'Auf einen Menschen ziehen: halbiert die Abbauzeit am Fels. Ein Werkzeugplatz pro Mensch.'),
   bone: type('Knochen', 'resource', '#e4dfcc', '🦴', 1, 'Rattenbeute. Kann für ein Gold verkauft werden.'),
@@ -85,11 +86,12 @@ const CREATURE_DEFAULTS = {
 export const DEFAULT_RAT_DROPS = freezeDeep({ chance: 90, outputs: [{ type: 'gold', count: 1, weight: 40 }, { type: 'bone', count: 1, weight: 30 }, { type: 'meat', count: 1, weight: 20 }] });
 export const DEFAULT_CHICKEN_DROPS = freezeDeep({ chance: 100, outputs: [{ type: 'bone', count: 1, weight: 1 }, { type: 'egg', count: 1, weight: 1 }, { type: 'meat', count: 1, weight: 1 }] });
 export const CARD_TYPES = freezeDeep(Object.fromEntries(Object.entries(BUILTIN_CARDS)
-  .map(([id, definition]) => [id, { ...definition, art: id, effects: DEFAULT_EFFECTS[id] || [], ...(CREATURE_DEFAULTS[id] ? { creature: CREATURE_DEFAULTS[id] } : {}), ...(id === 'rat' ? { deathDrops: DEFAULT_RAT_DROPS } : id === 'chicken' ? { deathDrops: DEFAULT_CHICKEN_DROPS } : {}) }])));
+  .map(([id, definition]) => [id, { ...definition, art: definition.art ?? id, effects: DEFAULT_EFFECTS[id] || [], ...(CREATURE_DEFAULTS[id] ? { creature: CREATURE_DEFAULTS[id] } : {}), ...(id === 'rat' ? { deathDrops: DEFAULT_RAT_DROPS } : id === 'chicken' ? { deathDrops: DEFAULT_CHICKEN_DROPS } : {}) }])));
 
 export const RECIPES = Object.freeze([
   Object.freeze({ id: 'piggyBank', name: 'Sparschwein', ingredients: { gold: 5, wood: 2 }, duration: 60_000, result: 'piggyBank', resultCount: 1, requiresHuman: true, timeBase: 'world' }),
   Object.freeze({ id: 'warehouse', name: 'Lager', ingredients: { wood: 5, stone: 5 }, duration: 30_000, result: 'warehouse', resultCount: 1, requiresHuman: true, timeBase: 'world' }),
+  Object.freeze({ id: 'town_hall', name: 'Rathaus', ingredients: { stone: 100 }, duration: 60_000, result: 'town_hall', resultCount: 1, requiresHuman: true, timeBase: 'world' }),
   Object.freeze({ id: 'axe', name: 'Axt', ingredients: { wood: 5, stone: 1 }, duration: 20_000, result: 'axe', resultCount: 1, requiresHuman: true, timeBase: 'world' }),
   Object.freeze({ id: 'pickaxe', name: 'Spitzhacke', ingredients: { wood: 5, stone: 2 }, duration: 20_000, result: 'pickaxe', resultCount: 1, requiresHuman: true, timeBase: 'world' }),
   Object.freeze({ id: 'strawberryField', name: 'Erdbeerfeld', ingredients: { soil: 1, berry: 1 }, duration: CONFIG.fieldGrowDuration, result: 'field', resultCount: 1, requiresHuman: false, timeBase: 'real' }),

@@ -65,7 +65,7 @@ function freePosition(world, x, y) {
   return wanted;
 }
 
-function addCard(world, type, x, y, extra = {}) {
+export function addCard(world, type, x, y, extra = {}) {
   const point = extra.stackId ? position(x, y) : freePosition(world, x, y);
   const card = { id: id(world), type, ...point, order: 0, ...extra };
   card.stackId ??= card.id;
@@ -116,7 +116,7 @@ function tidyStacks(world) {
   }
 }
 
-function removeCards(world, cardIds) {
+export function removeCards(world, cardIds) {
   const removed = new Set(cardIds);
   for (const card of world.cards) {
     if (removed.has(card.toolId)) delete card.toolId;
@@ -591,7 +591,7 @@ function reconcileRats(world) {
   }
 }
 
-function reconcile(world, now) {
+export function reconcile(world, now) {
   tidyStacks(world);
   reconcileRats(world);
   reconcileJobs(world, now);

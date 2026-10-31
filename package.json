@@ -1,6 +1,6 @@
 {
   "name": "@stackfriends/shared",
-  "version": "0.1.0",
+  "version": "0.2.0",
   "private": true,
   "type": "module",
   "description": "Gemeinsame Spielregeln und Katalogdefinitionen von StackFriends",
@@ -11,8 +11,12 @@
   "engines": {
     "node": ">=22"
   },
-  "exports": { "./*": "./*" },
-  "files": ["*.js"],
+  "exports": {
+    "./*": "./*"
+  },
+  "files": [
+    "*.js"
+  ],
   "scripts": {
     "test": "node --test tests/*.test.js",
     "check": "node --check game.js"
