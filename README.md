@@ -73,6 +73,14 @@ Kämpfe und Kreaturbewegungen pausieren außerhalb der aktiven Spielzeit. Ihre v
 
 Es gibt dafür keine Server-Timer oder laufenden Netzwerkanfragen. Die aufrufende API persistiert den neuen Stand atomar. Wie beim bestehenden Weltvorschub werden außergewöhnliche Rückstände über 100.000 Ereignisse mit einem Fehler abgebrochen; Zeit wird dabei nicht stillschweigend abgeschnitten. Diese Grenze betrifft insbesondere unbegrenzt wiederholende eigene Editorrezepte.
 
+## Lokale Simulation und gebündeltes Speichern
+
+`local-simulation.js` stellt dieselbe Simulation für Browser und Speicherprüfung bereit. `initializeLocalSimulation(world)` ergänzt bei älteren Welten einen aus der Welt-ID abgeleiteten Zufallszustand. Bereits gespeicherte Zufallsergebnisse werden nicht verändert.
+
+`applySimulationOperation(world, operation, { playerId })` verarbeitet eine lokale Aktion sofort und atomar. Jede Operation enthält `kind` (`advance` oder `command`), `at`, `activeUntil` und gegebenenfalls `command`. Abbau, Kampf, Paketergebnisse und erzeugte IDs verwenden einen gespeicherten Zufallsstrom. Ein Fehler verwirft auch den Zeitvorschub und verbrauchte Zufallswerte dieser Aktion. Globale Katalogänderungen gehören weiterhin in den gesonderten API-Ablauf.
+
+Beim Speichern prüft `replaySimulationBatch(world, operations, { playerId, maxTime })` höchstens 500 aufgezeichnete Engine-Aufrufe in derselben Reihenfolge. Die Anwendung zeichnet Ereignisse und Checkpoints auf, keine Animationsbilder. Der Batch ergänzt keinen weiteren Zeitvorschub; alle Zeiten sind ausdrücklich enthalten. Bei einer ungültigen Aktion bleibt der gesamte Ausgangsstand erhalten. Versionsprüfung, Wiederholschutz und Geschenke verwaltet die API.
+
 ## Vercel
 
 Für dieses Repository wird kein eigenes Vercel-Projekt angelegt. Frontend und API installieren ihr festgelegtes HTTPS-Archiv während `npm ci` und verwenden die Module in ihren jeweiligen Builds beziehungsweise Serverfunktionen. Ein daneben ausgecheckter `shared`-Ordner und Dateien außerhalb ihres Vercel-Repository-Hauptordners sind dafür nicht erforderlich.
