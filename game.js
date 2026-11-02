@@ -735,15 +735,65 @@ export function advanceWorld(world, now = Date.now(), { activeUntil = now, rng =
       Object.assign(rat, { x: rat.motion.toX, y: rat.motion.toY });
       delete rat.motion;
     }
+    const eventAt = lastAt + world.clock.elapsed - startElapsed;
     for (const job of [...world.jobs].filter((job) => job.timeBase === 'world' && job.dueAt <= world.clock.elapsed)) {
-      completeJob(world, job, now, rng);
+      completeJob(world, job, eventAt, rng);
     }
     for (const combat of [...world.combats].filter((combat) => combat.nextAttackAt <= world.clock.elapsed)) attack(world, combat, rng);
-    reconcile(world, now);
+    reconcile(world, eventAt);
   }
   world.clock.elapsed = endElapsed;
   world.clock.lastAt = Math.max(lastAt, now);
   // Growth is checked once, including after many offline days. No daily loop.
+  for (const job of [...world.jobs].filter((job) => job.timeBase === 'real' && job.dueAt <= now)) completeJob(world, job, now, rng);
+  reconcile(world, now);
+  return before !== JSON.stringify({ cards: world.cards, jobs: world.jobs, combats: world.combats });
+}
+
+/**
+ * Personal worlds finish unattended work when they are loaded again. Creature
+ * movement and combat use active time only; no background timer is required.
+ * Like advanceWorld, an exceptional 100,000-event backlog is rejected rather
+ * than silently discarding elapsed work from an unbounded custom recipe.
+ */
+export function advancePersonalWorld(world, now = Date.now(), { activeUntil = now, rng = Math.random } = {}) {
+  const before = JSON.stringify({ cards: world.cards, jobs: world.jobs, combats: world.combats });
+  const boundary = Math.max(world.clock.lastAt, Math.min(now, activeUntil));
+  advanceWorld(world, Math.min(now, boundary), { activeUntil: boundary, rng });
+  const offlineDuration = Math.max(0, now - world.clock.lastAt);
+  if (!offlineDuration) return before !== JSON.stringify({ cards: world.cards, jobs: world.jobs, combats: world.combats });
+
+  const startedAt = world.clock.lastAt;
+  const startElapsed = world.clock.elapsed;
+  const endElapsed = startElapsed + offlineDuration;
+  // Re-anchor each in-flight path at its visible pause position. While jobs
+  // complete, free-position checks also see this fixed point, not a stale path.
+  for (const creature of world.cards.filter((card) => card.motion)) {
+    const motion = creature.motion;
+    const point = ratPosition(creature, startElapsed);
+    for (const member of stackCards(world, creature.stackId)) Object.assign(member, point);
+    creature.motion = { ...motion, fromX: point.x, fromY: point.y,
+      startedAt: endElapsed, duration: Math.max(1, motion.startedAt + motion.duration - startElapsed) };
+  }
+  for (const combat of world.combats) {
+    combat.nextAttackAt += offlineDuration;
+    if (Number.isFinite(combat.lastAttackAt)) combat.lastAttackAt += offlineDuration;
+  }
+
+  let next;
+  let safety = 0;
+  while ((next = world.jobs.filter((job) => job.timeBase === 'world').reduce((time, job) => Math.min(time, job.dueAt), Infinity)) <= endElapsed) {
+    if (++safety > 100_000) throw new Error('Zu viele gleichzeitige Weltaktionen.');
+    world.clock.elapsed = Math.max(world.clock.elapsed, next);
+    // Outputs created while away retain their historical time of creation.
+    const eventAt = startedAt + world.clock.elapsed - startElapsed;
+    for (const job of [...world.jobs].filter((job) => job.timeBase === 'world' && job.dueAt <= world.clock.elapsed)) completeJob(world, job, eventAt, rng);
+    // Work can continue to the next queued source, without letting rats walk
+    // into a fight or advancing an already existing fight during the absence.
+    reconcileJobs(world, eventAt);
+  }
+  world.clock.elapsed = endElapsed;
+  world.clock.lastAt = Math.max(world.clock.lastAt, now);
   for (const job of [...world.jobs].filter((job) => job.timeBase === 'real' && job.dueAt <= now)) completeJob(world, job, now, rng);
   reconcile(world, now);
   return before !== JSON.stringify({ cards: world.cards, jobs: world.jobs, combats: world.combats });

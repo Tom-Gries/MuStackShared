@@ -65,6 +65,14 @@ Karten, Pakete und Rezepte aus dem Editor gehören zum zentralen Katalog. Die AP
 
 Die API verwaltet Identität, Berechtigungen, Transaktionen, Revisionen und den Geschenk-Posteingang. Die Funktionen eröffnen selbst keine Verbindung und starten keinen Timer.
 
+## Arbeit während der Abwesenheit
+
+`advancePersonalWorld(world, now, { activeUntil, rng })` berechnet zuerst die aktive Spielzeit mit `advanceWorld` und holt anschließend die Arbeit während der Abwesenheit nach. Abbau, Quellenwarteschlangen, Werkzeuge und Bau verwenden die tatsächlich vergangenen Zeitabschnitte. Quellen werden vollständig verbraucht; Menschen bleiben nach einem Bau erhalten. Erntefristen beginnen beim historischen Herstellungszeitpunkt.
+
+Kämpfe und Kreaturbewegungen pausieren außerhalb der aktiven Spielzeit. Ihre verbleibenden Angriffs- und Bewegungszeiten bleiben nach der Rückkehr erhalten. Feldwachstum wird weiterhin nach Echtzeit berechnet und sammelt höchstens eine ungeerntete Ernte an.
+
+Es gibt dafür keine Server-Timer oder laufenden Netzwerkanfragen. Die aufrufende API persistiert den neuen Stand atomar. Wie beim bestehenden Weltvorschub werden außergewöhnliche Rückstände über 100.000 Ereignisse mit einem Fehler abgebrochen; Zeit wird dabei nicht stillschweigend abgeschnitten. Diese Grenze betrifft insbesondere unbegrenzt wiederholende eigene Editorrezepte.
+
 ## Vercel
 
 Für dieses Repository wird kein eigenes Vercel-Projekt angelegt. Frontend und API installieren ihr festgelegtes HTTPS-Archiv während `npm ci` und verwenden die Module in ihren jeweiligen Builds beziehungsweise Serverfunktionen. Ein daneben ausgecheckter `shared`-Ordner und Dateien außerhalb ihres Vercel-Repository-Hauptordners sind dafür nicht erforderlich.
