@@ -33,6 +33,13 @@ const BUILTIN_CARDS = {
   tree: type('Baum', 'source', '#a3b78b', '🌳', 1, 'Mensch darauflegen: fünfmal Holz (70 %) oder Stock (30 %). Mit einer Axt doppelt so schnell.'),
   rock: type('Fels', 'source', '#b9b7af', '🪨', 1, 'Mensch darauflegen: fünfmal Stein (80 %) oder Feuerstein (20 %). Mit Spitzhacke doppelt so schnell.'),
   berryBush: type('Beerenbusch', 'source', '#b9b38b', '🫐', 1, 'Mensch darauflegen: fünf Durchläufe ergeben je eine Beere.'),
+  ironVein: type('Eisenader', 'source', '#b4ada1', '⛰️', 3, 'Mensch darauflegen: fünfmal Eisenerz, je zehn Sekunden. Mit einer Spitzhacke doppelt so schnell.'),
+  coalVein: type('Kohleader', 'source', '#999d94', '⛰️', 3, 'Mensch darauflegen: fünfmal Kohle, je zehn Sekunden. Mit einer Spitzhacke doppelt so schnell.'),
+  clayPool: type('Lehmtümpel', 'source', '#c5a083', '🟤', 3, 'Mensch darauflegen: fünfmal Lehm, je zehn Sekunden.'),
+  ironOre: type('Eisenerz', 'resource', '#bb9c84', '◆', 2, 'Eisenerz aus einer Eisenader. Kann in einer Kiste gelagert oder für zwei Gold verkauft werden.'),
+  coal: type('Kohle', 'resource', '#999d94', '◆', 1, 'Kohle aus einer Kohleader. Kann in einer Kiste gelagert oder verkauft werden.'),
+  clay: type('Lehm', 'resource', '#ccaa8c', '●', 1, 'Lehm aus einem Lehmtümpel. Kann in einer Kiste gelagert oder verkauft werden.'),
+  bat: type('Fledermaus', 'creature', '#b4a9b4', '🦇', 0, 'Selten im Bergbaupaket. Verfolgt Menschen: drei Leben und ein Schaden pro Angriff. Beim Tod fällt ein Knochen oder Fleisch heraus.'),
   wood: type('Holz', 'resource', '#c79973', '🪵', 1, 'Baumaterial für Werkzeuge, Lager und Sparschwein.'),
   stick: type('Stock', 'resource', '#d8bc92', '╱', 1, 'Ein kleiner Ast. Kann für ein Gold verkauft werden.'),
   stone: type('Stein', 'resource', '#c0c0b8', '◆', 1, 'Baumaterial für Werkzeuge und Lager.'),
@@ -46,7 +53,7 @@ const BUILTIN_CARDS = {
   chest: type('Kiste', 'building', '#c79973', '▣', 3, 'Aus zehn Holz. Ressourcen und Essen hineinziehen; ein Klick öffnet den Inhalt zum Entnehmen. Vor dem Verkaufen oder Verschenken leeren.'),
   town_hall: { ...type('Rathaus', 'building', '#c3b69b', '🏛️', 0, 'Öffnet die Spielerliste mit Materialien, Geschenken und Online-Benachrichtigungen. Ein Mensch baut es aus 100 Stein in einer Minute.'), art: 'warehouse' },
   axe: type('Axt', 'tool', '#aec3ba', '🪓', 3, 'Auf einen Menschen ziehen: halbiert die Abbauzeit am Baum. Ein Werkzeugplatz pro Mensch.'),
-  pickaxe: type('Spitzhacke', 'tool', '#b4bfc4', '⛏️', 3, 'Auf einen Menschen ziehen: halbiert die Abbauzeit am Fels. Ein Werkzeugplatz pro Mensch.'),
+  pickaxe: type('Spitzhacke', 'tool', '#b4bfc4', '⛏️', 3, 'Auf einen Menschen ziehen: halbiert die Abbauzeit an Fels, Eisenader und Kohleader. Ein Werkzeugplatz pro Mensch.'),
   bone: type('Knochen', 'resource', '#e4dfcc', '🦴', 1, 'Rattenbeute. Kann für ein Gold verkauft werden.'),
   meat: type('Fleisch', 'resource', '#d9988c', '🥩', 1, 'Rattenbeute. Kann für ein Gold verkauft werden.'),
   corpse: type('Leiche', 'human', '#aaa69e', '☠', 0, 'Dieser Mensch ist gestorben. Ein Totem zur Wiederbelebung folgt in einer späteren Version.'),
@@ -64,9 +71,12 @@ const DEFAULT_EFFECTS = {
   tree: [{ kind: 'source', duration: CONFIG.sourceDuration, uses: CONFIG.sourceUses, outputs: [{ type: 'wood', count: 1, weight: 70 }, { type: 'stick', count: 1, weight: 30 }] }],
   rock: [{ kind: 'source', duration: CONFIG.sourceDuration, uses: CONFIG.sourceUses, outputs: [{ type: 'stone', count: 1, weight: 80 }, { type: 'flint', count: 1, weight: 20 }] }],
   berryBush: [{ kind: 'source', duration: CONFIG.sourceDuration, uses: CONFIG.sourceUses, outputs: [{ type: 'berry', count: 1, weight: 1 }] }],
+  ironVein: [{ kind: 'source', duration: CONFIG.sourceDuration, uses: CONFIG.sourceUses, outputs: [{ type: 'ironOre', count: 1, weight: 1 }] }],
+  coalVein: [{ kind: 'source', duration: CONFIG.sourceDuration, uses: CONFIG.sourceUses, outputs: [{ type: 'coal', count: 1, weight: 1 }] }],
+  clayPool: [{ kind: 'source', duration: CONFIG.sourceDuration, uses: CONFIG.sourceUses, outputs: [{ type: 'clay', count: 1, weight: 1 }] }],
   berry: [{ kind: 'heal', amount: 1 }],
   axe: [{ kind: 'tool', sourceTypes: ['tree'], multiplier: 0.5 }],
-  pickaxe: [{ kind: 'tool', sourceTypes: ['rock'], multiplier: 0.5 }],
+  pickaxe: [{ kind: 'tool', sourceTypes: ['rock', 'ironVein', 'coalVein'], multiplier: 0.5 }],
   knife: [{ kind: 'weapon', damage: 1 }],
 };
 
@@ -83,11 +93,13 @@ const CREATURE_DEFAULTS = {
   cow: { ...DEFAULT_CREATURE, behavior: 'wander', hp: 4, speed: 15 },
   rabbit: { ...DEFAULT_CREATURE, behavior: 'wander', speed: 28 },
   chicken: { ...DEFAULT_CREATURE, behavior: 'wander', speed: 18 },
+  bat: { ...DEFAULT_CREATURE, aggressive: true, behavior: 'seek', hp: 3, damage: 1, speed: 30 },
 };
 export const DEFAULT_RAT_DROPS = freezeDeep({ chance: 90, outputs: [{ type: 'gold', count: 1, weight: 40 }, { type: 'bone', count: 1, weight: 30 }, { type: 'meat', count: 1, weight: 20 }] });
 export const DEFAULT_CHICKEN_DROPS = freezeDeep({ chance: 100, outputs: [{ type: 'bone', count: 1, weight: 1 }, { type: 'egg', count: 1, weight: 1 }, { type: 'meat', count: 1, weight: 1 }] });
+export const DEFAULT_BAT_DROPS = freezeDeep({ chance: 100, outputs: [{ type: 'bone', count: 1, weight: 1 }, { type: 'meat', count: 1, weight: 1 }] });
 export const CARD_TYPES = freezeDeep(Object.fromEntries(Object.entries(BUILTIN_CARDS)
-  .map(([id, definition]) => [id, { ...definition, art: definition.art ?? id, effects: DEFAULT_EFFECTS[id] || [], ...(CREATURE_DEFAULTS[id] ? { creature: CREATURE_DEFAULTS[id] } : {}), ...(id === 'rat' ? { deathDrops: DEFAULT_RAT_DROPS } : id === 'chicken' ? { deathDrops: DEFAULT_CHICKEN_DROPS } : {}) }])));
+  .map(([id, definition]) => [id, { ...definition, art: definition.art ?? id, effects: DEFAULT_EFFECTS[id] || [], ...(CREATURE_DEFAULTS[id] ? { creature: CREATURE_DEFAULTS[id] } : {}), ...(id === 'rat' ? { deathDrops: DEFAULT_RAT_DROPS } : id === 'chicken' ? { deathDrops: DEFAULT_CHICKEN_DROPS } : id === 'bat' ? { deathDrops: DEFAULT_BAT_DROPS } : {}) }])));
 
 export const RECIPES = Object.freeze([
   Object.freeze({ id: 'piggyBank', name: 'Sparschwein', ingredients: { gold: 5, wood: 2 }, duration: 60_000, result: 'piggyBank', resultCount: 1, requiresHuman: true, timeBase: 'world' }),
@@ -119,18 +131,22 @@ export const PACKS = freezeDeep([{
 }, {
   id: 'farm', name: 'Farm', description: '', color: '#5bc867', price: 10, size: 3,
   contents: [{ type: 'cow', weight: 10 }, { type: 'rat', weight: 30 }, { type: 'chicken', weight: 30 }, { type: 'rabbit', weight: 30 }],
+}, {
+  id: 'mining', name: 'Bergbaupaket', description: 'Eisenadern, Kohleadern und Lehmtümpel für neue Rohstoffe. Selten kommt eine Fledermaus zum Vorschein.',
+  color: '#aba99a', price: 50, size: 3,
+  contents: [{ type: 'ironVein', weight: 33 }, { type: 'coalVein', weight: 32 }, { type: 'clayPool', weight: 32 }, { type: 'bat', weight: 3 }],
 }]);
 
 export const PROTECTED_CARD_TYPES = Object.freeze(['human', 'gold', 'pack', 'rat', 'soil', 'field', 'piggyBank', 'corpse']);
 export const CARD_CATEGORIES = Object.freeze(['resource', 'food', 'source', 'building', 'tool', 'creature']);
 export const CATALOG_LIMITS = Object.freeze({ cardTypes: 200, recipes: 200, packs: 40, effects: 8, outputs: 30, duration: 604_800_000, size: 30, price: 1000 });
-export const DEFAULT_CATALOG = freezeDeep({ revision: 0, contentVersion: 4, cardTypes: CARD_TYPES, recipes: RECIPES, packs: PACKS });
+export const DEFAULT_CATALOG = freezeDeep({ revision: 0, contentVersion: 5, cardTypes: CARD_TYPES, recipes: RECIPES, packs: PACKS });
 
 /** Old saves resolve through defaults without producing a database write. */
 export function getCatalog(world) {
   const catalog = world?.catalog;
   if (!catalog) return DEFAULT_CATALOG;
-  if (catalog.contentVersion >= 4) return catalog;
+  if (catalog.contentVersion >= 5) return catalog;
   const cardTypes = { ...catalog.cardTypes };
   if (!(catalog.contentVersion >= 3)) {
     if (!(catalog.contentVersion >= 2)) for (const id of ['campfire', 'knife', 'cow', 'rabbit', 'chicken', 'egg', 'barn']) cardTypes[id] ??= CARD_TYPES[id];
@@ -139,13 +155,25 @@ export function getCatalog(world) {
     if (cardTypes.chicken && cardTypes.chicken.deathDrops === undefined) cardTypes.chicken = { ...cardTypes.chicken, deathDrops: DEFAULT_CHICKEN_DROPS };
     if (cardTypes.campfire?.name === 'Lagerfeuer') cardTypes.campfire = { ...cardTypes.campfire, name: 'Feuer' };
   }
-  cardTypes.chest ??= CARD_TYPES.chest;
+  if (!(catalog.contentVersion >= 4)) cardTypes.chest ??= CARD_TYPES.chest;
+  const newBat = !Object.hasOwn(cardTypes, 'bat');
+  for (const id of ['ironVein', 'coalVein', 'clayPool', 'bat', 'ironOre', 'coal', 'clay']) cardTypes[id] ??= CARD_TYPES[id];
+  if (newBat) {
+    const outputs = DEFAULT_BAT_DROPS.outputs.filter((output) => Object.hasOwn(cardTypes, output.type));
+    if (outputs.length !== DEFAULT_BAT_DROPS.outputs.length) cardTypes.bat = { ...cardTypes.bat, deathDrops: { chance: outputs.length ? DEFAULT_BAT_DROPS.chance : 0, outputs } };
+  }
+  if (cardTypes.pickaxe?.category === 'tool') cardTypes.pickaxe = { ...cardTypes.pickaxe,
+    ...(cardTypes.pickaxe.description === 'Auf einen Menschen ziehen: halbiert die Abbauzeit am Fels. Ein Werkzeugplatz pro Mensch.' ? { description: CARD_TYPES.pickaxe.description } : {}),
+    effects: (cardTypes.pickaxe.effects || []).map((effect) => effect.kind === 'tool'
+      ? { ...effect, sourceTypes: [...new Set([...effect.sourceTypes, 'ironVein', 'coalVein'])] } : effect) };
   const recipes = [...catalog.recipes];
   const signature = (recipe) => JSON.stringify(Object.entries(recipe.ingredients).sort(([a], [b]) => a.localeCompare(b)));
-  for (const recipe of RECIPES.filter((entry) => entry.id === 'chest' || (!(catalog.contentVersion >= 3) && ['knife', 'campfire', 'cookMeat'].includes(entry.id)))) {
+  for (const recipe of RECIPES.filter((entry) => (!(catalog.contentVersion >= 4) && entry.id === 'chest') || (!(catalog.contentVersion >= 3) && ['knife', 'campfire', 'cookMeat'].includes(entry.id)))) {
     if (Object.hasOwn(cardTypes, recipe.result) && Object.keys(recipe.ingredients).every((id) => Object.hasOwn(cardTypes, id)) && !recipes.some((existing) => existing.id === recipe.id || signature(existing) === signature(recipe))) recipes.push(recipe);
   }
-  return { ...catalog, contentVersion: 4, cardTypes, recipes };
+  const packs = [...catalog.packs];
+  if (!packs.some((pack) => pack.id === 'mining')) packs.push(PACKS.find((pack) => pack.id === 'mining'));
+  return { ...catalog, contentVersion: 5, cardTypes, recipes, packs };
 }
 export const getCardTypes = (world) => getCatalog(world).cardTypes;
 export const getRecipes = (world) => getCatalog(world).recipes;
@@ -342,7 +370,7 @@ export function validateCatalog(input, world) {
     const paid = world?.shopPayments?.[pack.id] ?? (pack.id === 'basic' ? world?.shopPaid : 0) ?? 0;
     if (paid > 0 && oldPacks.find((old) => old.id === pack.id)?.price !== pack.price) invalid('Der Preis eines angezahlten Pakets kann erst nach dem Kauf geändert werden.');
   }
-  return { revision: Number.isSafeInteger(input.revision) && input.revision >= 0 ? input.revision : 0, contentVersion: 4, cardTypes, recipes, packs };
+  return { revision: Number.isSafeInteger(input.revision) && input.revision >= 0 ? input.revision : 0, contentVersion: 5, cardTypes, recipes, packs };
 }
 
 export function applyCatalogCommand(world, command) {

@@ -180,7 +180,7 @@ test('version-three catalogs gain the chest without restoring intentionally dele
   catalog.cardTypes.knife.effects = []; catalog.packs[0].price = 9;
   const before = structuredClone(catalog), upgraded = getCatalog({ catalog });
   assert.deepEqual(catalog, before);
-  assert.equal(upgraded.contentVersion, 4);
+  assert.equal(upgraded.contentVersion, 5);
   assert.equal(upgraded.cardTypes.chest.name, 'Kiste');
   assert.deepEqual(upgraded.recipes.find((recipe) => recipe.id === 'chest').ingredients, { wood: 10 });
   assert.equal(upgraded.cardTypes.cookedMeat, undefined);

@@ -65,6 +65,12 @@ Karten, Pakete und Rezepte aus dem Editor gehören zum zentralen Katalog. Die AP
 
 Die API verwaltet Identität, Berechtigungen, Transaktionen, Revisionen und den Geschenk-Posteingang. Die Funktionen eröffnen selbst keine Verbindung und starten keinen Timer.
 
+## Bergbaupaket
+
+Das Bergbaupaket kostet 50 Gold und enthält drei zufällige Karten: Eisenader (33 %), Kohleader (32 %), Lehmtümpel (32 %) oder Fledermaus (3 %). Jede der drei Quellen liefert mit einem Menschen fünfmal den passenden Rohstoff: Eisenerz, Kohle oder Lehm. Ein Ertrag dauert zehn Sekunden; die Spitzhacke halbiert die Arbeit an Eisen- und Kohleadern. Quellen und Werkzeuge werden auch bei Offline-Arbeit berücksichtigt.
+
+Fledermäuse verfolgen Menschen. Sie haben drei Leben, verursachen alle zwei Sekunden einen Schaden und hinterlassen bei ihrem Tod einen Knochen oder Fleisch mit gleicher Wahrscheinlichkeit. Karten, Beute und Paket lassen sich im Editor bearbeiten. Die Inhaltsversion 5 ergänzt ältere Kataloge, ohne deren eigene Karten, Paketpreise und Rezepte zu ersetzen. Eine Goldader gehört nicht zum Paket.
+
 ## Kisten
 
 Zehn Holz ergeben nach zehn Sekunden ohne Menschen eine Kiste. Ressourcen und Essen werden per `move` auf die Kiste oder per `{ type: 'store', cardId: kistenId, itemId, split, takeAbove }` eingelagert. Die vollständigen Karten bleiben mit ihrer ID und ihrem Zustand in `chest.contents` erhalten und liegen währenddessen nicht auf dem Tisch. Gelagerte Karten nehmen nicht an Rezepten oder laufenden Arbeiten teil.
