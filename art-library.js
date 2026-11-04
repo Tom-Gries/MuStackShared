@@ -16,6 +16,7 @@ export const ART_LIBRARY = Object.freeze([
   { id: 'field', name: 'Erdbeerfeld' },
   { id: 'piggyBank', name: 'Sparschwein' },
   { id: 'warehouse', name: 'Lager' },
+  { id: 'chest', name: 'Kiste' },
   { id: 'axe', name: 'Axt' },
   { id: 'pickaxe', name: 'Spitzhacke' },
   { id: 'bone', name: 'Knochen' },

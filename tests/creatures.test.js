@@ -113,6 +113,6 @@ test('old catalogs gain the seven new cards lazily and deleted new cards stay de
   const catalog = structuredClone(getCatalog(world));
   delete catalog.cardTypes.cow;
   applyCommand(world, { type: 'catalog-save', catalog, baseCatalogRevision: 0 }, { playerId: player.id, now: 0 });
-  assert.equal(getCatalog(world).contentVersion, 3);
+  assert.equal(getCatalog(world).contentVersion, 4);
   assert.equal(getCatalog(world).cardTypes.cow, undefined);
 });

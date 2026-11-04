@@ -75,6 +75,7 @@ export function addCard(world, type, x, y, extra = {}) {
   if (creature) card.hp ??= creature.hp;
   if (type === 'human') card.hp ??= CONFIG.humanHp;
   if (type === 'piggyBank') card.gold ??= 0;
+  if (type === 'chest') card.contents ??= [];
   if (type === 'pack') {
     const pack = getPacks(world).find((definition) => definition.id === extra.packId) || getPacks(world).find((definition) => definition.id === 'basic') || PACKS[0];
     card.packId ??= pack.id;
@@ -206,6 +207,34 @@ function detachTool(world, human) {
   Object.assign(tool, position(human.x + 155, human.y + 35));
 }
 
+function selectedCards(world, card, command) {
+  if (card.equippedTo) return [card];
+  if (command.takeAbove) {
+    const above = normalCards(stackCards(world, card.stackId)).filter((member) => member.order >= card.order);
+    const selectedIds = new Set(above.map((member) => member.id));
+    return [...above, ...world.cards.filter((member) => member.equippedTo && selectedIds.has(member.equippedTo))];
+  }
+  if (command.split) return [card, ...world.cards.filter((other) => other.equippedTo === card.id)];
+  return stackCards(world, card.stackId);
+}
+
+const holdsContents = (card) => (card.type === 'piggyBank' && card.gold > 0) || (card.type === 'chest' && card.contents?.length > 0);
+const canStoreCards = (world, chest, cards) => cards.length > 0 && cards.every((card) => card.id !== chest.id
+  && card.type !== 'chest' && !card.equippedTo && !card.toolId && !card.contents?.length
+  && ['resource', 'food'].includes(getCardDefinition(world, card.type)?.category));
+
+function storeCards(world, chest, cards) {
+  if (chest.type !== 'chest') throw new Error('Nur eine Kiste kann Ressourcen lagern.');
+  if (!canStoreCards(world, chest, cards)) {
+    throw new Error('In die Kiste passen nur Ressourcen und Essen. Trenne andere Karten zuerst am Namen ab.');
+  }
+  chest.contents ??= [];
+  const stored = [...cards].sort((a, b) => a.order - b.order).map((card) => ({ ...card, stackId: card.id, order: 0 }));
+  removeCards(world, cards.map((card) => card.id));
+  chest.contents.push(...stored);
+  return `${stored.length} ${stored.length === 1 ? 'Karte' : 'Karten'} eingelagert.`;
+}
+
 function moveCards(world, command, now, rng) {
   const card = requireCard(world, command.cardId);
   if (creatureProfile(world, card)?.aggressive) throw new Error('Angreifende Lebewesen bewegen sich von selbst.');
@@ -225,18 +254,7 @@ function moveCards(world, command, now, rng) {
     const current = ratPosition(target, world.clock.elapsed);
     for (const member of stackCards(world, target.stackId)) Object.assign(member, current);
   }
-  let moving;
-  if (card.equippedTo) {
-    moving = [card];
-  } else if (command.takeAbove) {
-    const above = normalCards(stackCards(world, card.stackId)).filter((member) => member.order >= card.order);
-    const selectedIds = new Set(above.map((member) => member.id));
-    moving = [...above, ...world.cards.filter((member) => member.equippedTo && selectedIds.has(member.equippedTo))];
-  } else if (command.split) {
-    moving = [card, ...world.cards.filter((other) => other.equippedTo === card.id)];
-  } else {
-    moving = stackCards(world, card.stackId);
-  }
+  const moving = selectedCards(world, card, command);
   const material = moving.filter((item) => !item.equippedTo || (wasEquipped && item.id === card.id));
   const movingIds = new Set(moving.map((item) => item.id));
   let message;
@@ -277,8 +295,8 @@ function moveCards(world, command, now, rng) {
       }
     }
   } else if (command.zone === 'sell') {
-    if (material.some((item) => !getCardDefinition(world, item.type)?.sellPrice || (item.type === 'piggyBank' && item.gold > 0))) {
-      throw new Error('Dieser Stapel enthält unverkäufliche Karten. Ein gefülltes Sparschwein muss zuerst geleert werden.');
+    if (material.some((item) => !getCardDefinition(world, item.type)?.sellPrice || holdsContents(item))) {
+      throw new Error('Dieser Stapel enthält unverkäufliche Karten. Gefüllte Sparschweine und Kisten müssen zuerst geleert werden.');
     }
     const gold = material.reduce((total, item) => total + getCardDefinition(world, item.type).sellPrice, 0);
     removeCards(world, moving.map((item) => item.id));
@@ -289,11 +307,14 @@ function moveCards(world, command, now, rng) {
       coin.x = coins[0].x;
       coin.y = coins[0].y;
     });
+  } else if (target?.type === 'chest' && canStoreCards(world, target, moving)) {
+    message = storeCards(world, target, moving);
   } else if (target?.type === 'piggyBank' && material.length && material.every((item) => item.type === 'gold')) {
     target.gold += material.length;
     removeCards(world, material.map((item) => item.id));
   } else if (target && alive(target) && material.length && material.every((item) => effectOf(world, item.type, 'heal')) && target.hp < CONFIG.humanHp) {
     if (material.some((item) => item.type === 'piggyBank' && item.gold > 0)) throw new Error('Leere das Sparschwein zuerst, damit sein Gold erhalten bleibt.');
+    if (material.some((item) => item.type === 'chest' && item.contents?.length)) throw new Error('Leere die Kiste zuerst, damit ihr Inhalt erhalten bleibt.');
     const eaten = [];
     for (const food of [...material].sort((a, b) => a.order - b.order)) {
       if (target.hp >= CONFIG.humanHp) break;
@@ -340,6 +361,7 @@ export function applyCommand(world, command, { playerId, now = Date.now(), rng =
   if (!world.players.some((player) => player.id === playerId)) throw new Error('Bitte tritt der Welt zuerst mit deinem Namen bei.');
   if (!command || typeof command !== 'object') throw new Error('Ungültige Aktion.');
   if (command.takeAbove !== undefined && typeof command.takeAbove !== 'boolean') throw new Error('Ungültige Stapelauswahl.');
+  if (command.split !== undefined && typeof command.split !== 'boolean') throw new Error('Ungültige Stapelauswahl.');
   const draft = clone(world);
   let message;
   switch (command.type) {
@@ -362,6 +384,35 @@ export function applyCommand(world, command, { playerId, now = Date.now(), rng =
       if (command.zone && !['shop', 'open', 'sell'].includes(command.zone)) throw new Error('Unbekannte Ablagefläche.');
       message = moveCards(draft, command, now, rng);
       break;
+    case 'store': {
+      const chest = requireCard(draft, command.cardId);
+      const item = requireCard(draft, command.itemId);
+      message = storeCards(draft, chest, selectedCards(draft, item, command));
+      reconcile(draft, now);
+      break;
+    }
+    case 'retrieve': {
+      if (command.allOfType !== undefined && typeof command.allOfType !== 'boolean') throw new Error('Ungültige Entnahmeauswahl.');
+      const chest = requireCard(draft, command.cardId);
+      if (chest.type !== 'chest') throw new Error('Diese Karte ist keine Kiste.');
+      const item = chest.contents?.find((card) => card.id === command.itemId);
+      if (!item) throw new Error('Diese Karte liegt nicht mehr in der Kiste.');
+      const taking = command.allOfType ? chest.contents.filter((card) => card.type === item.type) : [item];
+      const point = command.x === undefined && command.y === undefined
+        ? freePosition(draft, chest.x + 155, chest.y)
+        : position(command.x ?? chest.x + 155, command.y ?? chest.y);
+      const ids = new Set(taking.map((card) => card.id));
+      chest.contents = chest.contents.filter((card) => !ids.has(card.id));
+      for (const [order, stored] of taking.entries()) {
+        // Reuse the stored identity and state; only its table placement changes.
+        const restored = { ...stored, ...point, stackId: taking[0].id, order };
+        for (const key of ['outputFromId', 'outputAnchorX', 'outputAnchorY', 'outputOriginX', 'outputOriginY']) delete restored[key];
+        draft.cards.push(restored);
+      }
+      reconcile(draft, now);
+      message = `${taking.length} ${taking.length === 1 ? 'Karte' : 'Karten'} entnommen.`;
+      break;
+    }
     case 'open-pack': {
       const pack = requireCard(draft, command.cardId);
       if (pack.type !== 'pack') throw new Error('Diese Karte ist kein Paket.');
@@ -426,7 +477,7 @@ function desiredJobs(world, now) {
     const sources = materials.filter((card) => effectOf(world, card.type, 'source'));
     const counts = Object.create(null);
     for (const card of materials) counts[card.type] = (counts[card.type] || 0) + 1;
-    const recipe = !materials.some((card) => card.type === 'piggyBank' && card.gold > 0) && getRecipes(world).find((entry) => (!entry.requiresHuman || human)
+    const recipe = !materials.some(holdsContents) && getRecipes(world).find((entry) => (!entry.requiresHuman || human)
       && Object.keys(entry.ingredients).length === Object.keys(counts).length
       && Object.entries(entry.ingredients).every(([type, count]) => counts[type] === count));
     if (recipe) {
@@ -623,7 +674,7 @@ function completeJob(world, job, now, rng) {
     if (!recipe) return;
     if (job.cardIds.some((cardId) => {
       const card = findCard(world, cardId);
-      return card.type === 'piggyBank' && card.gold > 0;
+      return holdsContents(card);
     })) return;
     const human = findCard(world, job.humanId);
     const point = human ? { x: human.x + 155, y: human.y + 15 } : { x: anchor.x, y: anchor.y };

@@ -43,6 +43,7 @@ const BUILTIN_CARDS = {
   field: type('Erdbeerfeld', 'building', '#9eb38b', '🍓', 3, 'Alle 24 Stunden zehn Beeren, auch offline. Es wird höchstens eine Ernte gespeichert.'),
   piggyBank: type('Sparschwein', 'building', '#e3b3ac', '🐷', 3, 'Gold hineinziehen. Ein Klick nimmt ein Gold heraus. Zum Paketkauf ein ausreichend gefülltes Sparschwein auf das gewünschte Paket im Laden ziehen. Zum Verkaufen zuerst leeren.'),
   warehouse: type('Lager', 'building', '#c5b090', '🏠', 5, 'Bereit für ein späteres Kartenlimit. In dieser Version hat das Lager noch keine Zusatzwirkung.'),
+  chest: type('Kiste', 'building', '#c79973', '▣', 3, 'Aus zehn Holz. Ressourcen und Essen hineinziehen; ein Klick öffnet den Inhalt zum Entnehmen. Vor dem Verkaufen oder Verschenken leeren.'),
   town_hall: { ...type('Rathaus', 'building', '#c3b69b', '🏛️', 0, 'Öffnet die Spielerliste mit Materialien, Geschenken und Online-Benachrichtigungen. Ein Mensch baut es aus 100 Stein in einer Minute.'), art: 'warehouse' },
   axe: type('Axt', 'tool', '#aec3ba', '🪓', 3, 'Auf einen Menschen ziehen: halbiert die Abbauzeit am Baum. Ein Werkzeugplatz pro Mensch.'),
   pickaxe: type('Spitzhacke', 'tool', '#b4bfc4', '⛏️', 3, 'Auf einen Menschen ziehen: halbiert die Abbauzeit am Fels. Ein Werkzeugplatz pro Mensch.'),
@@ -91,6 +92,7 @@ export const CARD_TYPES = freezeDeep(Object.fromEntries(Object.entries(BUILTIN_C
 export const RECIPES = Object.freeze([
   Object.freeze({ id: 'piggyBank', name: 'Sparschwein', ingredients: { gold: 5, wood: 2 }, duration: 60_000, result: 'piggyBank', resultCount: 1, requiresHuman: true, timeBase: 'world' }),
   Object.freeze({ id: 'warehouse', name: 'Lager', ingredients: { wood: 5, stone: 5 }, duration: 30_000, result: 'warehouse', resultCount: 1, requiresHuman: true, timeBase: 'world' }),
+  Object.freeze({ id: 'chest', name: 'Kiste', ingredients: { wood: 10 }, duration: 10_000, result: 'chest', resultCount: 1, requiresHuman: false, timeBase: 'world' }),
   Object.freeze({ id: 'town_hall', name: 'Rathaus', ingredients: { stone: 100 }, duration: 60_000, result: 'town_hall', resultCount: 1, requiresHuman: true, timeBase: 'world' }),
   Object.freeze({ id: 'axe', name: 'Axt', ingredients: { wood: 5, stone: 1 }, duration: 20_000, result: 'axe', resultCount: 1, requiresHuman: true, timeBase: 'world' }),
   Object.freeze({ id: 'pickaxe', name: 'Spitzhacke', ingredients: { wood: 5, stone: 2 }, duration: 20_000, result: 'pickaxe', resultCount: 1, requiresHuman: true, timeBase: 'world' }),
@@ -122,25 +124,28 @@ export const PACKS = freezeDeep([{
 export const PROTECTED_CARD_TYPES = Object.freeze(['human', 'gold', 'pack', 'rat', 'soil', 'field', 'piggyBank', 'corpse']);
 export const CARD_CATEGORIES = Object.freeze(['resource', 'food', 'source', 'building', 'tool', 'creature']);
 export const CATALOG_LIMITS = Object.freeze({ cardTypes: 200, recipes: 200, packs: 40, effects: 8, outputs: 30, duration: 604_800_000, size: 30, price: 1000 });
-export const DEFAULT_CATALOG = freezeDeep({ revision: 0, contentVersion: 3, cardTypes: CARD_TYPES, recipes: RECIPES, packs: PACKS });
+export const DEFAULT_CATALOG = freezeDeep({ revision: 0, contentVersion: 4, cardTypes: CARD_TYPES, recipes: RECIPES, packs: PACKS });
 
 /** Old saves resolve through defaults without producing a database write. */
 export function getCatalog(world) {
   const catalog = world?.catalog;
   if (!catalog) return DEFAULT_CATALOG;
-  if (catalog.contentVersion >= 3) return catalog;
+  if (catalog.contentVersion >= 4) return catalog;
   const cardTypes = { ...catalog.cardTypes };
-  if (!(catalog.contentVersion >= 2)) for (const id of ['campfire', 'knife', 'cow', 'rabbit', 'chicken', 'egg', 'barn']) cardTypes[id] ??= CARD_TYPES[id];
-  cardTypes.cookedMeat ??= CARD_TYPES.cookedMeat;
-  if (cardTypes.knife && !cardTypes.knife.effects?.some((effect) => effect.kind === 'weapon')) cardTypes.knife = { ...cardTypes.knife, effects: [...(cardTypes.knife.effects || []), ...DEFAULT_EFFECTS.knife] };
-  if (cardTypes.chicken && cardTypes.chicken.deathDrops === undefined) cardTypes.chicken = { ...cardTypes.chicken, deathDrops: DEFAULT_CHICKEN_DROPS };
-  if (cardTypes.campfire?.name === 'Lagerfeuer') cardTypes.campfire = { ...cardTypes.campfire, name: 'Feuer' };
+  if (!(catalog.contentVersion >= 3)) {
+    if (!(catalog.contentVersion >= 2)) for (const id of ['campfire', 'knife', 'cow', 'rabbit', 'chicken', 'egg', 'barn']) cardTypes[id] ??= CARD_TYPES[id];
+    cardTypes.cookedMeat ??= CARD_TYPES.cookedMeat;
+    if (cardTypes.knife && !cardTypes.knife.effects?.some((effect) => effect.kind === 'weapon')) cardTypes.knife = { ...cardTypes.knife, effects: [...(cardTypes.knife.effects || []), ...DEFAULT_EFFECTS.knife] };
+    if (cardTypes.chicken && cardTypes.chicken.deathDrops === undefined) cardTypes.chicken = { ...cardTypes.chicken, deathDrops: DEFAULT_CHICKEN_DROPS };
+    if (cardTypes.campfire?.name === 'Lagerfeuer') cardTypes.campfire = { ...cardTypes.campfire, name: 'Feuer' };
+  }
+  cardTypes.chest ??= CARD_TYPES.chest;
   const recipes = [...catalog.recipes];
   const signature = (recipe) => JSON.stringify(Object.entries(recipe.ingredients).sort(([a], [b]) => a.localeCompare(b)));
-  for (const recipe of RECIPES.filter((entry) => ['knife', 'campfire', 'cookMeat'].includes(entry.id))) {
+  for (const recipe of RECIPES.filter((entry) => entry.id === 'chest' || (!(catalog.contentVersion >= 3) && ['knife', 'campfire', 'cookMeat'].includes(entry.id)))) {
     if (Object.hasOwn(cardTypes, recipe.result) && Object.keys(recipe.ingredients).every((id) => Object.hasOwn(cardTypes, id)) && !recipes.some((existing) => existing.id === recipe.id || signature(existing) === signature(recipe))) recipes.push(recipe);
   }
-  return { ...catalog, contentVersion: 3, cardTypes, recipes };
+  return { ...catalog, contentVersion: 4, cardTypes, recipes };
 }
 export const getCardTypes = (world) => getCatalog(world).cardTypes;
 export const getRecipes = (world) => getCatalog(world).recipes;
@@ -321,6 +326,10 @@ export function validateCatalog(input, world) {
     for (const entry of card.packContents || []) reference(cardTypes, entry.type, 'Inhalt eines bereits gekauften Pakets');
     // Legacy packages carry the old default distribution until their first edit.
     if (card.type === 'pack' && !card.packContents) for (const entry of PACKS[0].contents) reference(cardTypes, entry.type, 'Inhalt eines älteren Pakets');
+    if (card.type === 'chest') for (const stored of card.contents || []) {
+      reference(cardTypes, stored.type, 'Inhalt einer Kiste');
+      if (!['resource', 'food'].includes(cardTypes[stored.type].category)) invalid('In einer Kiste gelagerte Karten müssen Ressourcen oder Essen bleiben. Leere die Kiste zuerst.');
+    }
   }
   for (const [packId, paid] of Object.entries(world?.shopPayments || {})) {
     if (paid > 0 && !packIds.has(packId)) invalid('Ein angezahltes Paket kann erst gelöscht werden, wenn es vollständig bezahlt ist.');
@@ -333,7 +342,7 @@ export function validateCatalog(input, world) {
     const paid = world?.shopPayments?.[pack.id] ?? (pack.id === 'basic' ? world?.shopPaid : 0) ?? 0;
     if (paid > 0 && oldPacks.find((old) => old.id === pack.id)?.price !== pack.price) invalid('Der Preis eines angezahlten Pakets kann erst nach dem Kauf geändert werden.');
   }
-  return { revision: Number.isSafeInteger(input.revision) && input.revision >= 0 ? input.revision : 0, contentVersion: 3, cardTypes, recipes, packs };
+  return { revision: Number.isSafeInteger(input.revision) && input.revision >= 0 ? input.revision : 0, contentVersion: 4, cardTypes, recipes, packs };
 }
 
 export function applyCatalogCommand(world, command) {

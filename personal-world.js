@@ -42,7 +42,7 @@ export function createPersonalWorld(player, catalog, now = Date.now()) {
 /** Material counts are card counts; coins stored inside a piggy bank count as gold too. */
 export function summarizeMaterials(world) {
   const counts = new Map();
-  for (const card of world.cards) {
+  for (const card of world.cards.flatMap((card) => [card, ...(card.type === 'chest' ? card.contents || [] : [])])) {
     if (card.type === 'human' || card.type === 'corpse') continue;
     counts.set(card.type, (counts.get(card.type) || 0) + 1);
     if (card.type === 'piggyBank' && Number.isSafeInteger(card.gold) && card.gold > 0) {
@@ -56,6 +56,8 @@ function assertGiftable(world, card, checkReferences = false) {
   identifier(card.type, 'Kartentyp');
   if (!getCardDefinition(world, card.type)) fail('Dieser Kartentyp ist nicht mehr vorhanden.');
   if (card.type === 'human' || card.type === 'corpse') fail('Menschen und Leichen können nicht verschenkt werden.');
+  if (card.contents !== undefined && (card.type !== 'chest' || !Array.isArray(card.contents))) fail('Der Kisteninhalt ist ungültig.');
+  if (card.type === 'chest' && card.contents?.length) fail('Leere die Kiste vor dem Verschenken, damit ihr Inhalt erhalten bleibt.');
   if (creatureProfile(world, card)?.aggressive) fail('Angreifende Lebewesen können nicht verschenkt werden.');
   if (card.equippedTo || (checkReferences && world.cards.some((human) => human.toolId === card.id))) fail('Lege das Werkzeug vor dem Verschenken ab.');
 }

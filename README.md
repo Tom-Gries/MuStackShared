@@ -58,12 +58,18 @@ Karten, Pakete und Rezepte aus dem Editor gehören zum zentralen Katalog. Die AP
 `personal-world.js` ergänzt die Spielregeln um reine Funktionen ohne Datenbankzugriffe:
 
 - `createPersonalWorld(player, catalog, now)` erstellt genau einen Menschen für `player.id` sowie das Startgold für drei Basicpakete. Die Welt-ID ist die Spieler-ID.
-- `summarizeMaterials(world)` zählt die Karten für die Spielerübersicht. Menschen und Leichen werden ausgelassen; Gold im Sparschwein zählt zum Goldbestand.
+- `summarizeMaterials(world)` zählt die Karten für die Spielerübersicht, einschließlich eingelagerten Ressourcen und Essens. Menschen und Leichen werden ausgelassen; Gold im Sparschwein zählt zum Goldbestand.
 - `takeGiftCards(world, selection, now)` entfernt eine Drag-Auswahl atomar und liefert übertragbare Karten. Standardmäßig werden die gewählte Karte und alle darüberliegenden Karten genommen. Menschen, Leichen, angreifende Lebewesen, ausgerüstete Werkzeuge und Teilnehmer laufender Arbeiten oder Kämpfe sind gesperrt.
 - `receiveGiftCards(world, cards, now)` liefert Geschenke atomar mit neuen Karten- und Stapel-IDs in eine persönliche Welt. Karteninhalt, verbleibende Quellen-Nutzungen, Paketinhalt, Leben und Erntefrist bleiben erhalten. Bewegungsbahnen und Verweise in die Absenderwelt werden verworfen.
 - `ensurePersonalCatalog(catalog)` ergänzt in älteren zentralen Katalogen die Rathauskarte und das Rezept aus 100 Stein, ohne angepasste Definitionen zu ersetzen. Ein Mensch baut das Rathaus nach 60 Sekunden Spielzeit fertig.
 
 Die API verwaltet Identität, Berechtigungen, Transaktionen, Revisionen und den Geschenk-Posteingang. Die Funktionen eröffnen selbst keine Verbindung und starten keinen Timer.
+
+## Kisten
+
+Zehn Holz ergeben nach zehn Sekunden ohne Menschen eine Kiste. Ressourcen und Essen werden per `move` auf die Kiste oder per `{ type: 'store', cardId: kistenId, itemId, split, takeAbove }` eingelagert. Die vollständigen Karten bleiben mit ihrer ID und ihrem Zustand in `chest.contents` erhalten und liegen währenddessen nicht auf dem Tisch. Gelagerte Karten nehmen nicht an Rezepten oder laufenden Arbeiten teil.
+
+`{ type: 'retrieve', cardId: kistenId, itemId, x?, y?, allOfType? }` legt eine Karte wieder auf den Tisch; `allOfType: true` entnimmt alle Karten desselben Typs als Stapel. Ohne Position findet die Engine einen freien Platz neben der Kiste. Gefüllte Kisten lassen sich weder verkaufen, verschenken noch als Zutat verbrauchen. Ihre Inhalte werden bei globalen Katalogänderungen geschützt. Kisten können nicht ineinander gelagert werden.
 
 ## Arbeit während der Abwesenheit
 

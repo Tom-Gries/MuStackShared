@@ -19,7 +19,7 @@ test('version-two catalogs lazily gain the new cooking content and weapon effect
   const world = legacyWorld();
   const before = JSON.stringify(world);
   const catalog = getCatalog(world);
-  assert.equal(catalog.contentVersion, 3);
+  assert.equal(catalog.contentVersion, 4);
   assert.deepEqual(catalog.cardTypes.cookedMeat, CARD_TYPES.cookedMeat);
   assert.deepEqual(catalog.cardTypes.knife.effects, [{ kind: 'weapon', damage: 1 }]);
   assert.deepEqual(catalog.cardTypes.chicken.deathDrops, DEFAULT_CHICKEN_DROPS);
@@ -93,12 +93,12 @@ test('deleted legacy result cards do not gain dangling default recipes during an
   }
 });
 
-test('saving version three makes deletion of an unused cooked-meat card and its recipe permanent', () => {
+test('saving the current content version makes deletion of an unused cooked-meat card and its recipe permanent', () => {
   const world = legacyWorld();
   const player = joinPlayer(world, 'Inhaltsprüfung', 0);
   const upgraded = structuredClone(getCatalog(world));
   applyCommand(world, { type: 'catalog-save', catalog: upgraded, baseCatalogRevision: upgraded.revision }, { playerId: player.id, now: 0 });
-  assert.equal(world.catalog.contentVersion, 3);
+  assert.equal(world.catalog.contentVersion, 4);
   const deleted = structuredClone(getCatalog(world));
   deleted.recipes = deleted.recipes.filter((recipe) => recipe.id !== 'cookMeat');
   delete deleted.cardTypes.cookedMeat;
